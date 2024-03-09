@@ -98,7 +98,29 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
-	return
+	if len(key) != RecordRowKeyLen {
+		err = errInvalidRecordKey.GenWithStack("invalid record key[{}]: size[{}] != {}", key, len(key), RecordRowKeyLen)
+		return 0, 0, err
+	}
+
+	if !bytes.Equal(key[:tablePrefixLength], tablePrefix) || !bytes.Equal(key[tablePrefixLength+idLen:prefixLen], recordPrefixSep) {
+		err = errInvalidRecordKey.GenWithStack("invalid record key[{}]", key)
+		return 0, 0, err
+	}
+
+	_, tableId, err := codec.DecodeInt(key[tablePrefixLength : tablePrefixLength+idLen])
+	if err != nil {
+		return 0, 0, err
+	}
+	tableID = tableId
+
+	_, rowId, err := codec.DecodeInt(key[prefixLen : prefixLen+idLen])
+	if err != nil {
+		return
+	}
+	handle = rowId
+
+	return tableId, rowId, nil
 }
 
 // appendTableIndexPrefix appends table index prefix  "t[tableID]_i".
@@ -148,6 +170,29 @@ func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
+	if len(key) < prefixLen+idLen {
+		err = errInvalidRecordKey.GenWithStack("invalid index key[{}]: size[{}] < {}", key, len(key), prefixLen+idLen)
+		return
+	}
+
+	if !bytes.Equal(key[:tablePrefixLength], tablePrefix) || !bytes.Equal(key[tablePrefixLength+idLen:prefixLen], indexPrefixSep) {
+		err = errInvalidRecordKey.GenWithStack("invalid index key[{}]", key)
+		return
+	}
+
+	_, tableId, err := codec.DecodeInt(key[tablePrefixLength : tablePrefixLength+idLen])
+	if err != nil {
+		return
+	}
+	tableID = tableId
+
+	_, indexId, err := codec.DecodeInt(key[prefixLen : prefixLen+idLen])
+	if err != nil {
+		return
+	}
+	indexID = indexId
+
+	indexValues = key[prefixLen+idLen:]
 	return tableID, indexID, indexValues, nil
 }
 
