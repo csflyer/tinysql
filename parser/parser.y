@@ -3819,6 +3819,15 @@ JoinTable:
          * }
          *
 	 */
+|	TableRef JoinType "JOIN" TableRef "ON" Expression
+	{
+		onCondition := &ast.OnCondition{Expr: $6.(ast.ExprNode)}
+		if ($2 == "LEFT") {
+			$$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.LeftJoin, On: onCondition}
+		} else {
+			$$ = &ast.Join{Left: $1.(ast.ResultSetNode), Right: $4.(ast.ResultSetNode), Tp: ast.RightJoin, On: onCondition}
+		}
+	}
 
 JoinType:
 	"LEFT"
